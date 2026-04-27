@@ -1,5 +1,7 @@
 # token-validator-service
 
+[![CI/CD](https://github.com/virtualhealthcitizen/token-validator-service/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/virtualhealthcitizen/token-validator-service/actions/workflows/ci-cd.yml)
+
 ## Build container
 
 ```bash
