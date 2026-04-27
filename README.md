@@ -30,4 +30,3 @@ See [`run_container.sh`](./run_container.sh`).
 ```bash
 newman run token-validator-service.postman_collection.json
 ```
-
