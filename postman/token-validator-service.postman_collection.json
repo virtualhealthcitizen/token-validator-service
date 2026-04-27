@@ -1,0 +1,256 @@
+{
+  "info": {
+    "_postman_id": "945bed91-5c43-40c3-ae23-a9fef7459e9a",
+    "name": "token-validator-service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "32765571"
+  },
+  "item": [
+    {
+      "name": "Local - Validate token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Response status is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"token\": \"{{gcp-access-token}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://127.0.0.1:8080/api/validate-token",
+          "protocol": "http",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "validate-token"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Cloud Run - Validate token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Response status is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// javascript",
+              "// Pre-request script: obtain GCP access token from (1) existing env token, (2) metadata server, (3) OAuth2 refresh token.",
+              "// Requires either:",
+              "// - pm.environment.set(\"gcp-access-token\", \"<token>\")  OR",
+              "// - running inside GCP (metadata available) OR",
+              "// - set env vars: gcp_client_id, gcp_client_secret, gcp_refresh_token",
+              "(function () {",
+              "  const ENV_TOKEN_NAME = \"gcp-access-token\";",
+              "  const METADATA_TOKEN_URL = \"http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token\";",
+              "  const OAUTH_TOKEN_URL = \"https://oauth2.googleapis.com/token\";",
+              "",
+              "  function setToken(token) {",
+              "    pm.environment.set(ENV_TOKEN_NAME, token);",
+              "    console.log(\"Set\", ENV_TOKEN_NAME);",
+              "  }",
+              "",
+              "  // 0) If user already set an access token manually, use it.",
+              "  const existing = pm.environment.get(ENV_TOKEN_NAME);",
+              "  if (existing) {",
+              "    console.log(ENV_TOKEN_NAME, \"already set; using existing token\");",
+              "    return;",
+              "  }",
+              "",
+              "  // 1) Try metadata server (only works on GCE/GKE/Cloud Run)",
+              "  pm.sendRequest({",
+              "    url: METADATA_TOKEN_URL,",
+              "    method: \"GET\",",
+              "    header: { \"Metadata-Flavor\": \"Google\" },",
+              "    timeout: 4000",
+              "  }, function (err, res) {",
+              "    if (!err && res && res.code === 200) {",
+              "      try {",
+              "        const body = res.json();",
+              "        if (body && body.access_token) {",
+              "          setToken(body.access_token);",
+              "          return;",
+              "        }",
+              "      } catch (e) { /* fall through to oauth fallback */ }",
+              "    }",
+              "",
+              "    // 2) Fallback: OAuth2 refresh token",
+              "    const clientId = pm.environment.get(\"gcp_client_id\");",
+              "    const clientSecret = pm.environment.get(\"gcp_client_secret\");",
+              "    const refreshToken = pm.environment.get(\"gcp_refresh_token\");",
+              "",
+              "    if (!clientId || !clientSecret || !refreshToken) {",
+              "      console.error(\"GCP token acquisition failed: no metadata token and missing oauth env vars.\");",
+              "      // Guidance for quick manual token:",
+              "      // - run `gcloud auth print-access-token` locally, copy result into Postman env var `gcp_access_token`",
+              "      // OR",
+              "      // - obtain a refresh token via OAuth2 Playground and set gcp_client_id, gcp_client_secret, gcp_refresh_token",
+              "      return;",
+              "    }",
+              "",
+              "    const body = {",
+              "      grant_type: \"refresh_token\",",
+              "      client_id: clientId,",
+              "      client_secret: clientSecret,",
+              "      refresh_token: refreshToken",
+              "    };",
+              "",
+              "    pm.sendRequest({",
+              "      url: OAUTH_TOKEN_URL,",
+              "      method: \"POST\",",
+              "      header: { \"Content-Type\": \"application/x-www-form-urlencoded\" },",
+              "      body: {",
+              "        mode: \"urlencoded\",",
+              "        urlencoded: Object.keys(body).map(function (k) { return { key: k, value: body[k] }; })",
+              "      }",
+              "    }, function (err2, res2) {",
+              "      if (err2 || !res2) {",
+              "        console.error(\"OAuth token request failed\", err2 || res2);",
+              "        return;",
+              "      }",
+              "      try {",
+              "        const t = res2.json();",
+              "        if (t && t.access_token) {",
+              "          setToken(t.access_token);",
+              "        } else {",
+              "          console.error(\"No access_token in OAuth response\", res2.text());",
+              "        }",
+              "      } catch (e) {",
+              "        console.error(\"Failed parsing OAuth response\", e);",
+              "      }",
+              "    });",
+              "  });",
+              "})();",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"token\": \"{{gcp-access-token}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://token-validator-service-5afqr6ijoq-uc.a.run.app/api/validate-token",
+          "protocol": "https",
+          "host": [
+            "token-validator-service-5afqr6ijoq-uc",
+            "a",
+            "run",
+            "app"
+          ],
+          "path": [
+            "api",
+            "validate-token"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Cloud Run - Validate token Copy",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Response status is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"token\": \"{{gcp-access-token}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://token-validator-service-5afqr6ijoq-uc.a.run.app/api/validate-token",
+          "protocol": "https",
+          "host": [
+            "token-validator-service-5afqr6ijoq-uc",
+            "a",
+            "run",
+            "app"
+          ],
+          "path": [
+            "api",
+            "validate-token"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
