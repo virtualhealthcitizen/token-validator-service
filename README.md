@@ -1,7 +1,5 @@
 # token-validator-service
 
-[![CI/CD](https://github.com/virtualhealthcitizen/token-validator-service/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/virtualhealthcitizen/token-validator-service/actions/workflows/ci-cd.yml)
-
 ## Build container
 
 ```bash
@@ -30,4 +28,3 @@ See [`run_container.sh`](./run_container.sh`).
 ```bash
 newman run token-validator-service.postman_collection.json
 ```
-
