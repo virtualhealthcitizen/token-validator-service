@@ -1,4 +1,4 @@
-name: Build, Test, and Deploy to Google Cloud Run
+name: CI/CD
 
 on:
   push:
@@ -41,9 +41,24 @@ jobs:
         fi
 
     - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@v0.5.0
+      uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCLOUD_SERVICE_KEY }}
+
+    - name: Ensure Artifact Registry repository exists
+      run: |
+        REPO_NAME="token-validator-service"
+        LOCATION="us-central1"
+        if ! gcloud artifacts repositories describe "$REPO_NAME" \
+             --location="$LOCATION" --project="${{ secrets.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+          gcloud artifacts repositories create "$REPO_NAME" \
+            --repository-format=docker \
+            --location="$LOCATION" \
+            --description="Docker repo for token-validator-service" \
+            --project="${{ secrets.GCP_PROJECT_ID }}"
+        else
+          echo "Artifact Registry repository '$REPO_NAME' already exists"
+        fi
 
     - name: Configure Docker to use the gcloud command-line tool as a credential helper
       run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
@@ -52,7 +67,6 @@ jobs:
       run: |
         docker build -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/token-validator-service/token-validator-service:latest .
         docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/token-validator-service/token-validator-service:latest
-
 
     - name: Deploy to Cloud Run (CLI)
       run: |
