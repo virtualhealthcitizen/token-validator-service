@@ -2,6 +2,14 @@
 
 [![CI/CD](https://github.com/virtualhealthcitizen/token-validator-service/actions/workflows/ci-cd.yml/badge.svg?event=pull_request)](https://github.com/virtualhealthcitizen/token-validator-service/actions/workflows/ci-cd.yml)
 
+A stateless Flask microservice that verifies Google OAuth access tokens against
+Google's `tokeninfo` endpoint. POST a token to `/api/validate-token` — a valid
+token returns `200` with the decoded claims, anything else returns `400`.
+
+![token-validator-service demo](demo.gif)
+
+_(captured against the live Cloud Run deployment; email/sub redacted)_
+
 ## Build container
 
 ```bash
