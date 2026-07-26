@@ -108,12 +108,25 @@ body {
 .result.ok { border-left-color: var(--ok); }
 .result.bad { border-left-color: var(--bad); }
 .result.err { border-left-color: var(--err); }
+.result.decode { border-left-color: var(--muted); }
 
 .result-head-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .result-head { margin: 0; font-weight: 700; font-size: 15px; }
 .result.ok .result-head { color: var(--ok); }
 .result.bad .result-head { color: var(--bad); }
 .result.err .result-head { color: var(--err); }
+.result.decode .result-head { color: var(--ink); }
+
+.decode-warning {
+  margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent);
+  border-radius: 9px; padding: 8px 10px;
+}
+.decode-section-label {
+  margin: 4px 0 -4px; font-size: 11.5px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
 
 .expiry { margin: 0; font-size: 12.5px; color: var(--muted); }
 .expiry.expired { color: var(--err); font-weight: 600; }
