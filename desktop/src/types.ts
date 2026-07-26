@@ -1,4 +1,6 @@
-export type Mode = "direct" | "remote";
+import type { DecodedJwt } from "./lib/jwt";
+
+export type Mode = "direct" | "remote" | "decode";
 
 /** Google tokeninfo claims (all string-valued over the wire). */
 export interface TokenInfo {
@@ -19,6 +21,8 @@ export interface ValidateResult {
   valid?: boolean;
   status?: number;
   tokenInfo?: TokenInfo;
+  /** Present only for offline decode-only mode — an UNVERIFIED decode, never validation. */
+  decoded?: DecodedJwt;
   error?: string;
   mode?: Mode;
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Mode, ValidatePayload, ValidateResult } from "./types";
 import { humanizeExpiry, orderClaims, splitScopes } from "./lib/claims";
+import { decodeJwtUnverified, decodedToTokenInfo } from "./lib/jwt";
 
 const DEFAULT_SERVICE_URL = "https://token-validator-service-5afqr6ijoq-uc.a.run.app";
 const TOKENINFO_URL = "https://www.googleapis.com/oauth2/v3/tokeninfo";
@@ -82,9 +83,15 @@ export default function App() {
   const validate = useCallback(async () => {
     const t = token.trim();
     if (!t || busy) return;
-    setBusy(true);
     setResult(null);
     setCopied(false);
+    // Decode-only: purely local, no network, no signature check.
+    if (mode === "decode") {
+      const d = decodeJwtUnverified(t);
+      setResult(d.ok ? { ok: true, decoded: d.decoded, mode: "decode" } : { ok: false, error: d.error });
+      return;
+    }
+    setBusy(true);
     const payload: ValidatePayload = { token: t, mode, serviceUrl };
     const r = window.tv ? await window.tv.validateToken(payload) : await validateInBrowser(payload);
     setResult(r);
@@ -118,9 +125,24 @@ export default function App() {
     return exp ? humanizeExpiry(Number(exp), Date.now()) : null;
   }, [result]);
 
+  // Offline decode-only view — reuses the claims renderer; NEVER validation.
+  const decodedHeaderClaims = useMemo(
+    () => (result?.decoded ? orderClaims(decodedToTokenInfo(result.decoded.header)) : []),
+    [result]
+  );
+  const decodedPayloadClaims = useMemo(
+    () => (result?.decoded ? orderClaims(decodedToTokenInfo(result.decoded.payload)) : []),
+    [result]
+  );
+  const decodedExpiry = useMemo(() => {
+    const exp = result?.decoded?.payload?.exp;
+    return typeof exp === "number" ? humanizeExpiry(exp, Date.now()) : null;
+  }, [result]);
+
   const copyJson = useCallback(async () => {
-    if (!result?.tokenInfo) return;
-    await navigator.clipboard.writeText(JSON.stringify(result.tokenInfo, null, 2));
+    const data = result?.decoded ?? result?.tokenInfo;
+    if (!data) return;
+    await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }, [result]);
@@ -173,6 +195,15 @@ export default function App() {
             >
               Remote
             </button>
+            <button
+              role="tab"
+              aria-selected={mode === "decode"}
+              className={mode === "decode" ? "seg active" : "seg"}
+              onClick={() => setMode("decode")}
+              title="Decode a JWT offline without verifying its signature"
+            >
+              Decode only (offline)
+            </button>
           </div>
 
           {mode === "remote" && (
@@ -193,21 +224,72 @@ export default function App() {
             Clear
           </button>
           <button className="btn primary" onClick={() => void validate()} disabled={!token.trim() || busy}>
-            {busy ? "Validating…" : "Validate"}
+            {busy ? "Validating…" : mode === "decode" ? "Decode" : "Validate"}
           </button>
         </div>
 
         <p className="mode-hint">
           {mode === "direct"
             ? "Direct: the app calls Google’s tokeninfo endpoint itself — no backend needed."
-            : "Remote: posts to your token-validator-service (e.g. a local Flask, or an unauthenticated deployment)."}
+            : mode === "remote"
+            ? "Remote: posts to your token-validator-service (e.g. a local Flask, or an unauthenticated deployment)."
+            : "Decode only: reads a JWT’s header + payload entirely offline — no network call, and the signature is NOT verified. This is inspection, not validation."}
           {" "}The token is never stored or logged.
         </p>
       </section>
 
       {result && (
-        <section className={`result ${result.valid ? "ok" : result.ok ? "bad" : "err"}`}>
-          {!result.ok ? (
+        <section
+          className={`result ${
+            result.decoded ? "decode" : result.valid ? "ok" : result.ok ? "bad" : "err"
+          }`}
+        >
+          {result.decoded ? (
+            <>
+              <div className="result-head-row">
+                <p className="result-head">🔓 Decoded · signature NOT verified</p>
+                <button className="btn tiny" onClick={() => void copyJson()}>
+                  {copied ? "Copied!" : "Copy JSON"}
+                </button>
+              </div>
+
+              <p className="decode-warning">
+                Offline decode only. The signature was <strong>not</strong> checked and the token
+                may be forged, tampered, or expired — do not trust these claims for authorization.
+              </p>
+
+              {decodedExpiry && (
+                <p className={`expiry ${decodedExpiry.expired ? "expired" : ""}`}>
+                  {decodedExpiry.expired ? "Expired " : "Expires "} {decodedExpiry.relative} ·{" "}
+                  {decodedExpiry.absolute}
+                </p>
+              )}
+
+              <p className="decode-section-label">Payload</p>
+              <table className="claims">
+                <tbody>
+                  {decodedPayloadClaims.map((c) => (
+                    <tr key={c.key}>
+                      <th>{c.label}</th>
+                      <td>{c.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <p className="decode-section-label">Header</p>
+              <table className="claims">
+                <tbody>
+                  {decodedHeaderClaims.map((c) => (
+                    <tr key={c.key}>
+                      <th>{c.label}</th>
+                      <td>{c.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          ) : !result.ok ? (
             <p className="result-head">⚠ {result.error}</p>
           ) : result.valid ? (
             <>

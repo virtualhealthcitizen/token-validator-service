@@ -28,11 +28,15 @@ Ship one validated item per cycle via a merged PR; commit trailer
 
 ## Later
 - [ ] Batch validate: paste many tokens, table of results.
-- [ ] Offline decode-only mode for JWT-style tokens, clearly separated from live tokeninfo.
+- [x] Offline decode-only mode for JWT-style tokens, clearly separated from live tokeninfo.
 - [ ] electron-builder packaging (win/mac/linux) + icon + size budget (desktop M3).
 - [ ] README screenshots + a desktop `demo.gif`, wired for the jm showcase demo-media pipeline.
 - [ ] Session-only history of *results* (never tokens).
 
 ## Burndown Log (newest first)
+- 2026-07-26: desktop — added an offline **Decode only** mode: a pure, unit-tested
+      `decodeJwtUnverified()` helper (base64url header+payload, no network, no signature
+      check) wired into the validate UI as a clearly-labelled un-verified decode, reusing
+      the existing claims table + Copy JSON. Never presented as validation.
 - 2026-06-30: added `todo.md` burndown backlog (High/Medium/Later) + cut release v0.1.1;
       release-prep infra pass. No app-behavior change.
